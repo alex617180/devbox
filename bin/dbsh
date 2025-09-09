@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
+# По умолчанию берутся креды из devbox/.env (например, DB_USERNAME/DB_PASSWORD),
+# либо root/DB_ROOT_PASSWORD, если переменные не заданы. БД можно не указывать.
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -it mysql \
+  mysql -u"${DB_USERNAME:-root}" -p"${DB_PASSWORD:-${DB_ROOT_PASSWORD:-root}}" "${DB_DATABASE:-}"

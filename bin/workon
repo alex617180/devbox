@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
+proj="${1:-}"; [[ -z "$proj" ]] && { echo "usage: workon <relative-project-path>"; exit 1; }
+dex "/var/www/$proj" bash

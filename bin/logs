@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
+proj="${1:-}"; kind="${2:-all}"   # all|serve|vite
+[[ -z "$proj" ]] && { echo "usage: logs <project> [all|serve|vite]"; exit 1; }
+
+case "$kind" in
+  all)
+    dex "/var/www/$proj" bash -lc "set -e; files=\$(ls -1 /var/log/devbox/{serve,vite}-${proj//\//_}-*.log 2>/dev/null || true); if [[ -z \"\$files\" ]]; then files=\$(ls -1 /tmp/{serve,vite}-${proj//\//_}-*.log 2>/dev/null || true); fi; if [[ -z \"\$files\" ]]; then echo 'ℹ️  Логи не найдены для проекта ${proj}.'; ps -ef | egrep 'artisan serve|php -S 0.0.0.0:[0-9]+ -t public|node .*vite' | grep -v grep || true; exit 0; fi; echo \"\$files\" | xargs -r -n1 -I{} bash -lc 'echo -e \"\n=== {} ===\"; tail -n 120 {}'";;
+  serve)
+    dex "/var/www/$proj" bash -lc "files=\$(ls -1 /var/log/devbox/serve-${proj//\//_}-*.log 2>/dev/null || true); if [[ -z \"\$files\" ]]; then files=\$(ls -1 /tmp/serve-${proj//\//_}-*.log 2>/dev/null || true); fi; if [[ -z \"\$files\" ]]; then echo 'ℹ️  Нет логов serve. Возможно, процесс не запущен.'; echo '— Процессы:'; ps -ef | egrep 'artisan serve|php -S 0.0.0.0:[0-9]+ -t public' | grep -v grep || true; exit 0; fi; tail -n 200 \"\$files\"";;
+  vite)
+    dex "/var/www/$proj" bash -lc "files=\$(ls -1 /var/log/devbox/vite-${proj//\//_}-*.log 2>/dev/null || true); if [[ -z \"\$files\" ]]; then files=\$(ls -1 /tmp/vite-${proj//\//_}-*.log 2>/dev/null || true); fi; if [[ -z \"\$files\" ]]; then echo 'ℹ️  Нет логов Vite. Возможно, процесс не запущен.'; echo '— Процессы:'; ps -ef | egrep 'node .*vite' | grep -v grep || true; exit 0; fi; tail -n 200 \"\$files\"";;
+  *) echo "usage: logs <project> [all|serve|vite]"; exit 1;;
+esac

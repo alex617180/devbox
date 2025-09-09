@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
+proj="${1:-}"; [[ -z "$proj" ]] && { echo "usage: ps <project>"; exit 1; }
+dex "/var/www/$proj" bash -lc 'ps -ef | egrep "artisan serve|php -S 0\.0\.0\.0:[0-9]+ -t public|node .*vite" | grep -v grep || true'

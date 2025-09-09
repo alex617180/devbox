@@ -1,0 +1,42 @@
+
+> dev
+> vite --host --strictPort --port 28130
+
+
+  VITE v5.4.19  ready in 110 ms
+
+  ➜  Local:   http://localhost:28130/
+  ➜  Network: http://172.18.0.3:28130/
+  ➜  press h + enter to show help
+
+  LARAVEL v11.45.3  plugin v1.3.0
+
+  ➜  APP_URL: http://escan.loc:8000
+
+> dev
+> vite --host --strictPort --port 28130
+
+
+  VITE v5.4.19  ready in 125 ms
+
+  ➜  Local:   http://localhost:28130/
+  ➜  Network: http://172.18.0.3:28130/
+  ➜  press h + enter to show help
+
+  LARAVEL v11.45.3  plugin v1.3.0
+
+  ➜  APP_URL: http://escan.loc:8000
+
+> dev
+> vite --host --strictPort --port 28130
+
+
+  VITE v5.4.19  ready in 114 ms
+
+  ➜  Local:   http://localhost:28130/
+  ➜  Network: http://172.18.0.3:28130/
+  ➜  press h + enter to show help
+
+  LARAVEL v11.45.3  plugin v1.3.0
+
+  ➜  APP_URL: http://escan.loc:28080

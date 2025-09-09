@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
+proj="${1:-}"; port="${2:-}"
+[[ -z "$proj" ]] && { echo "usage: serve <project> [port-from-${APP_PORT_RANGE}]"; exit 1; }
+# если порт не передан — пробуем фиксированный APP_PORT, затем диапазон
+[[ -z "$port" ]] && port="${APP_PORT:-}" || true
+[[ -z "$port" ]] && port="$(freeport "$APP_PORT_RANGE")" || true
+[[ -z "$port" ]] && { echo "❌ Нет свободных портов в $APP_PORT_RANGE и APP_PORT не задан"; exit 1; }
+
+# гарантируем доступность каталога логов внутри контейнера
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T -u 0 workspace bash -lc \
+  'mkdir -p /var/log/devbox && chmod 0777 /var/log/devbox'
+
+# Проверки наличия директории проекта и файла artisan
+if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T workspace bash -lc "test -d '/var/www/$proj'"; then
+  echo "❌ Папка проекта /var/www/$proj не найдена. Проверь путь (он должен быть относительным к ${HOST_PROJECTS_DIR:-../})."
+  exit 1
+fi
+if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T workspace bash -lc "test -f '/var/www/$proj/artisan'"; then
+  echo "❌ Не найден файл artisan в /var/www/$proj. Это точно Laravel‑проект? Выполните composer create-project/install."
+  exit 1
+fi
+
+# Проверка зависимостей (vendor)
+if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T workspace bash -lc "test -f '/var/www/$proj/vendor/autoload.php'"; then
+  echo "❌ Не найден '/var/www/$proj/vendor/autoload.php'. Выполните: bin/composer $proj install"
+  exit 1
+fi
+
+# Всегда используем php -S (универсально для любых версий Laravel)
+if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T workspace bash -lc "test -f '/var/www/$proj/public/index.php'"; then
+  echo "❌ Не найден '/var/www/$proj/public/index.php'. Проверьте, что это корень Laravel‑проекта."
+  exit 1
+fi
+
+dexd "/var/www/$proj" sh -lc \
+  "log=/var/log/devbox/serve-${proj//\//_}-${port}.log; \
+   : > \"\$log\"; \
+   # убиваем только процессы из текущей директории
+   for pid in \$(ps -ef | grep -E '[p]hp .*artisan serve --host=0.0.0.0 --port=${port}' | awk '{print \$2}'); do cwd=\$(readlink -f /proc/\$pid/cwd 2>/dev/null||echo); [[ \"\$cwd\" == \"\$(pwd)\"* ]] && kill \"\$pid\" 2>/dev/null||true; done; \
+   for pid in \$(ps -ef | grep -E '[p]hp -S 0.0.0.0:${port} -t public' | awk '{print \$2}'); do cwd=\$(readlink -f /proc/\$pid/cwd 2>/dev/null||echo); [[ \"\$cwd\" == \"\$(pwd)\"* ]] && kill \"\$pid\" 2>/dev/null||true; done; \
+   if php artisan list >/dev/null 2>&1 && php artisan list | grep -qE '^\\s*serve\\s'; then \
+     echo '[info] starting (artisan): php artisan serve --host=0.0.0.0 --port=${port}' >>\"\$log\"; \
+     php artisan serve --host=0.0.0.0 --port=${port} >>\"\$log\" 2>&1; \
+   else \
+     echo '[info] starting (php -S): php -S 0.0.0.0:${port} -t public public/index.php' >>\"\$log\"; \
+     php -S 0.0.0.0:${port} -t public public/index.php >>\"\$log\" 2>&1; \
+   fi"
+echo "✅ Laravel (${proj}) → http://localhost:${port}"
+echo "📝 logs: $DEVBOX_DIR/logs/serve-${proj//\//_}-${port}.log"
+# Быстрая проверка здоровья и вывод лога при ошибке
+dex "/var/www/$proj" sh -lc \
+  "log=/var/log/devbox/serve-${proj//\//_}-${port}.log; \
+   echo '[info] checking health on 127.0.0.1:${port}' >>\"\$log\"; \
+   for i in {1..50}; do curl -fsS -o /dev/null http://127.0.0.1:${port} && { echo '[info] healthy' >>\"\$log\"; exit 0; }; sleep 0.2; done; \
+   echo '⚠️  Не отвечает, пробую fallback php -S' >>\"\$log\"; \
+   for pid in \$(ps -ef | grep -E '[p]hp .*artisan serve --host=0.0.0.0 --port=${port}' | awk '{print \$2}'); do cwd=\$(readlink -f /proc/\$pid/cwd 2>/dev/null||echo); [[ \"\$cwd\" == \"\$(pwd)\"* ]] && kill \"\$pid\" 2>/dev/null||true; done; \
+   php -S 0.0.0.0:${port} -t public public/index.php >>\"\$log\" 2>&1 & \
+   for i in {1..50}; do curl -fsS -o /dev/null http://127.0.0.1:${port} && { echo '[info] healthy (fallback)' >>\"\$log\"; exit 0; }; sleep 0.2; done; \
+   echo '❌ Сервер не отвечает на 127.0.0.1:${port}. Последние строки лога:'; \
+   tail -n 120 \"\$log\" || true"

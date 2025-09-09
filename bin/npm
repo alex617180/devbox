@@ -1,0 +1,14 @@
+# bin/npm
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
+proj="${1:-}"; shift || true
+[[ -z "$proj" ]] && { echo "usage: npm <project> [npm-args…]"; exit 1; }
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T -u 0 workspace bash -lc '
+  wd="/var/www/'"$proj"'";
+  uid=$(stat -c %u "$wd" 2>/dev/null || echo 1000)
+  gid=$(stat -c %g "$wd" 2>/dev/null || echo 1000)
+  mkdir -p /home/dev/.npm
+  chown -R "$uid:$gid" /home/dev/.npm 2>/dev/null || true
+'
+dex "/var/www/$proj" npm "$@"

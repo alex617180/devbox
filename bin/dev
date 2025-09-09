@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
+proj="${1:-}"; [[ -z "$proj" ]] && { echo "usage: dev <project>"; exit 1; }
+# если заданы фиксированные порты — используем их; иначе автоподбор из диапазона
+app_port="${APP_PORT:-}"
+vite_port="${VITE_PORT:-}"
+[[ -z "$app_port" ]] && app_port="$(freeport "$APP_PORT_RANGE")"  || true
+[[ -z "$vite_port" ]] && vite_port="$(freeport "$VITE_PORT_RANGE")" || true
+[[ -z "$app_port" ]] && { echo "❌ Нет портов в $APP_PORT_RANGE и APP_PORT не задан"; exit 1; }
+[[ -z "$vite_port" ]] && { echo "❌ Нет портов в $VITE_PORT_RANGE и VITE_PORT не задан"; exit 1; }
+"$(dirname "$0")/serve" "$proj" "$app_port"
+"$(dirname "$0")/vite"  "$proj" "$vite_port"
+echo -e "\n🚀 ${proj}\n  Laravel: http://localhost:${app_port}\n  Vite:    http://localhost:${vite_port}"

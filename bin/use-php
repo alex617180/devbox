@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"; load_env
+ver="${1:-}"; [[ -z "$ver" ]] && { echo "usage: use-php <8.2-cli|8.3-cli|...>"; exit 1; }
+envf="$DEVBOX_DIR/.env"; touch "$envf"
+grep -q "^PHP_TAG=" "$envf" && sed -i.bak "s/^PHP_TAG=.*/PHP_TAG=$ver/" "$envf" || echo "PHP_TAG=$ver" >> "$envf"
+echo "🔄 Rebuild workspace with PHP $ver…"
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" build workspace
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" up -d workspace
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec workspace php -v

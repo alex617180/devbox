@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
+proj="${1:-}"; shift || true
+[[ -z "$proj" ]] && { echo "usage: art <project> [artisan-args…]"; exit 1; }
+dex "/var/www/$proj" php artisan "$@"

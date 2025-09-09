@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"; load_env
+major="${1:-}"; [[ -z "$major" ]] && { echo "usage: use-node <18|20|22>"; exit 1; }
+envf="$DEVBOX_DIR/.env"; touch "$envf"
+grep -q "^NODE_MAJOR=" "$envf" && sed -i.bak "s/^NODE_MAJOR=.*/NODE_MAJOR=$major/" "$envf" || echo "NODE_MAJOR=$major" >> "$envf"
+echo "🔄 Rebuild workspace with Node $major…"
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" build workspace
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" up -d workspace
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec workspace node -v

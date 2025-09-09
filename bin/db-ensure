@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
+proj="${1:-}"; db="${2:-}"; user="${3:-}"; pass="${4:-}"
+if [[ -z "$proj" ]]; then
+  echo "usage: db-ensure <project> [db_name] [db_user] [db_password]"
+  exit 1
+fi
+db="${db:-$(basename "$proj" | tr -c 'a-zA-Z0-9_' '_' )}"
+user="${user:-${DB_USERNAME:-laravel}}"
+pass="${pass:-${DB_PASSWORD:-secret}}"
+esc_pass=${pass//\'/''}
+
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T mysql \
+  mysql -uroot -p"${DB_ROOT_PASSWORD:-root}" -e \
+  "CREATE DATABASE IF NOT EXISTS \`${db}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE USER IF NOT EXISTS '${user}'@'%' IDENTIFIED BY '${esc_pass}';
+   GRANT ALL PRIVILEGES ON \`${db}\`.* TO '${user}'@'%';
+   FLUSH PRIVILEGES;"
+echo "✅ DB ready: ${db} (host=mysql user=${user})"

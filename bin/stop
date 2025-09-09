@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
+proj="${1:-}"; [[ -z "$proj" ]] && { echo "usage: stop <project>"; exit 1; }
+
+dex "/var/www/$proj" bash -lc '
+  # artisan serve — убиваем только процессы из текущей директории проекта
+  for pid in $(ps -ef | grep -E "[p]hp .*artisan serve --host=0\.0\.0\.0" | awk "{print \$2}"); do
+    cwd=$(readlink -f /proc/$pid/cwd 2>/dev/null || echo "")
+    [[ "$cwd" == "$(pwd)"* ]] && kill "$pid" 2>/dev/null || true
+  done
+
+  # php -S fallback — по cwd
+  for pid in $(ps -ef | grep -E "[p]hp -S 0\.0\.0\.0:[0-9]+ -t public" | awk "{print \$2}"); do
+    cwd=$(readlink -f /proc/$pid/cwd 2>/dev/null || echo "")
+    [[ "$cwd" == "$(pwd)"* ]] && kill "$pid" 2>/dev/null || true
+  done
+
+  # vite — по cwd
+  for pid in $(ps -ef | grep -E "[n]ode .*vite" | awk "{print \$2}"); do
+    cwd=$(readlink -f /proc/$pid/cwd 2>/dev/null || echo "")
+    [[ "$cwd" == "$(pwd)"* ]] && kill "$pid" 2>/dev/null || true
+  done
+
+  rm -f /tmp/serve-'"${proj//\//_}"'-*.log /tmp/vite-'"${proj//\//_}"'-*.log 2>/dev/null || true
+'
+echo "🛑 Остановлено: ${proj}"
