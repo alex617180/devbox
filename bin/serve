@@ -1,35 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
-source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
-proj="${1:-}"; port="${2:-}"
-[[ -z "$proj" ]] && { echo "usage: serve <project> [port-from-${APP_PORT_RANGE}]"; exit 1; }
+source "$(dirname "$0")/_lib.sh"
+proj="${1:-}"
+arg2="${2:-}"
+arg3="${3:-}"
+if [[ -z "$proj" ]]; then echo "usage: serve <project> [83|74] [port-from-range]"; exit 1; fi
+
+# Разовый выбор workspace (второй аргумент), иначе трактуем как порт
+port=""
+case "$arg2" in
+  83|8.3|8.3-cli|workspace83) export DEVBOX_PHP=83; port="$arg3" ;;
+  74|7.4|7.4-cli|workspace74) export DEVBOX_PHP=74; port="$arg3" ;;
+  "") ;;
+  *) port="$arg2" ;;
+esac
+
+load_env; ensure_up
 # если порт не передан — пробуем фиксированный APP_PORT, затем диапазон
 [[ -z "$port" ]] && port="${APP_PORT:-}" || true
 [[ -z "$port" ]] && port="$(freeport "$APP_PORT_RANGE")" || true
 [[ -z "$port" ]] && { echo "❌ Нет свободных портов в $APP_PORT_RANGE и APP_PORT не задан"; exit 1; }
 
 # гарантируем доступность каталога логов внутри контейнера
-docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T -u 0 workspace bash -lc \
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T -u 0 "${WS_SERVICE}" bash -lc \
   'mkdir -p /var/log/devbox && chmod 0777 /var/log/devbox'
 
 # Проверки наличия директории проекта и файла artisan
-if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T workspace bash -lc "test -d '/var/www/$proj'"; then
+if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T "${WS_SERVICE}" bash -lc "test -d '/var/www/$proj'"; then
   echo "❌ Папка проекта /var/www/$proj не найдена. Проверь путь (он должен быть относительным к ${HOST_PROJECTS_DIR:-../})."
   exit 1
 fi
-if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T workspace bash -lc "test -f '/var/www/$proj/artisan'"; then
+if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T "${WS_SERVICE}" bash -lc "test -f '/var/www/$proj/artisan'"; then
   echo "❌ Не найден файл artisan в /var/www/$proj. Это точно Laravel‑проект? Выполните composer create-project/install."
   exit 1
 fi
 
 # Проверка зависимостей (vendor)
-if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T workspace bash -lc "test -f '/var/www/$proj/vendor/autoload.php'"; then
+if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T "${WS_SERVICE}" bash -lc "test -f '/var/www/$proj/vendor/autoload.php'"; then
   echo "❌ Не найден '/var/www/$proj/vendor/autoload.php'. Выполните: bin/composer $proj install"
   exit 1
 fi
 
 # Всегда используем php -S (универсально для любых версий Laravel)
-if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T workspace bash -lc "test -f '/var/www/$proj/public/index.php'"; then
+if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T "${WS_SERVICE}" bash -lc "test -f '/var/www/$proj/public/index.php'"; then
   echo "❌ Не найден '/var/www/$proj/public/index.php'. Проверьте, что это корень Laravel‑проекта."
   exit 1
 fi

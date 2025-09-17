@@ -1,10 +1,21 @@
 # bin/npm
 #!/usr/bin/env bash
 set -euo pipefail
-source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
-proj="${1:-}"; shift || true
-[[ -z "$proj" ]] && { echo "usage: npm <project> [npm-args…]"; exit 1; }
-docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T -u 0 workspace bash -lc '
+source "$(dirname "$0")/_lib.sh"
+
+proj="${1:-}"; ver="${2:-}"
+if [[ -z "$proj" ]]; then echo "usage: npm <project> [83|74] [npm-args…]"; exit 1; fi
+
+shift || true
+if [[ -n "${ver}" ]]; then
+  case "$ver" in
+    83|8.3|8.3-cli|workspace83) export DEVBOX_PHP=83; shift || true ;;
+    74|7.4|7.4-cli|workspace74) export DEVBOX_PHP=74; shift || true ;;
+  esac
+fi
+
+load_env; ensure_up
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T -u 0 "${WS_SERVICE}" bash -lc '
   wd="/var/www/'"$proj"'";
   uid=$(stat -c %u "$wd" 2>/dev/null || echo 1000)
   gid=$(stat -c %g "$wd" 2>/dev/null || echo 1000)

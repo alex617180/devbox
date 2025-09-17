@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
-source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
-proj="${1:-}"; shift || true
-[[ -z "$proj" ]] && { echo "usage: composer <project> [composer-args…]"; exit 1; }
+source "$(dirname "$0")/_lib.sh"
+
+proj="${1:-}"; ver="${2:-}"
+if [[ -z "$proj" ]]; then echo "usage: composer <project> [83|74] [composer-args…]"; exit 1; fi
+
+shift || true
+if [[ -n "${ver}" ]]; then
+  case "$ver" in
+    83|8.3|8.3-cli|workspace83) export DEVBOX_PHP=83; shift || true ;;
+    74|7.4|7.4-cli|workspace74) export DEVBOX_PHP=74; shift || true ;;
+  esac
+fi
+
+load_env; ensure_up
 dex "/var/www/$proj" composer "$@"

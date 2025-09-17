@@ -13,7 +13,12 @@ RUN apt-get update && apt-get install -y \
  && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
  && docker-php-ext-install \
       pdo_mysql zip intl bcmath pcntl sockets exif gd \
- && pecl install xdebug \
+ && pecl channel-update pecl.php.net \
+ && if php -r 'exit(PHP_VERSION_ID >= 80000 ? 0 : 1);'; then \
+      pecl install xdebug; \
+    else \
+      pecl install xdebug-3.1.6; \
+    fi \
  && rm -rf /var/lib/apt/lists/*
 
 # Composer

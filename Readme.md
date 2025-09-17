@@ -2,7 +2,7 @@
 
 Универсальная Docker‑среда для разработки сразу нескольких PHP/Laravel проектов с единым MySQL и удобными шорткатами для `artisan`, `vite`, `composer`, `npm`. Работает на Linux/macOS/WSL.
 
-— services: `workspace` (PHP + Node + Composer + Xdebug) и `mysql`
+— services: `workspace83`, `workspace74` (PHP + Node + Composer + Xdebug) и `mysql`
 — монтируется корневая папка с вашими проектами (по умолчанию `../`)
 — автоподбор свободных портов для `artisan serve` и Vite
 
@@ -36,10 +36,13 @@
 Ссылки будут в выводе: `http://localhost:<порт>`.
 
 ## Состав окружения
-- workspace: PHP `${PHP_TAG:-8.3-cli}`, Node `${NODE_MAJOR:-20}`, Composer, Xdebug; рабочая директория `/var/www`
+- workspace83: PHP `${PHP83_TAG:-8.3-cli}`, Node `${NODE_MAJOR:-20}`, Composer, Xdebug; рабочая директория `/var/www`
+- workspace74: PHP `${PHP74_TAG:-7.4-cli}`, Node `${NODE_MAJOR:-20}`, Composer, Xdebug; рабочая директория `/var/www`
 - mysql: образ `mysql:8.4`, проброшен порт `${MYSQL_PORT:-3306}`
 - volumes: `mysql_data`, `composer_cache`, `node_cache`
-- порты для приложений: `${APP_PORT}`; для Vite: `${VITE_PORT}` (фиксированные значения из .env)
+- порты публикуются диапазонами, отдельно для каждого workspace:
+  - PHP 8.3: `${APP_PORT_RANGE_83}` (Laravel/php -S), `${VITE_PORT_RANGE_83}` (Vite)
+  - PHP 7.4: `${APP_PORT_RANGE_74}` (Laravel/php -S), `${VITE_PORT_RANGE_74}` (Vite)
 
 Файлы:
 - `docker-compose.yml` — описание сервисов
@@ -50,13 +53,13 @@
 
 ## Переменные окружения (devbox/.env)
 - `HOST_PROJECTS_DIR` — что монтировать в `/var/www` (по умолчанию `../`)
-- `PHP_TAG` — версия PHP для workspace (например, `8.2-cli`, `8.3-cli`)
+- `DEFAULT_PHP` — какой workspace использовать по умолчанию (`83` или `74`); разово можно `DEVBOX_PHP=74 <cmd>`
+- `PHP83_TAG`/`PHP74_TAG` — теги базовых php‑образов для workspace (опционально)
 - `NODE_MAJOR` — мажорная версия Node (например, `18`, `20`, `22`)
 - `MYSQL_PORT` — внешний порт MySQL
-- `APP_PORT` — фиксированный порт публикации для PHP‑приложения (Compose)
-- `VITE_PORT` — фиксированный порт публикации для Vite (Compose)
-- `APP_PORT_RANGE` — диапазон портов для автоподбора, используется скриптами если `APP_PORT` не задан
-- `VITE_PORT_RANGE` — диапазон портов для автоподбора, используется скриптами если `VITE_PORT` не задан
+- `APP_PORT_RANGE_83`/`VITE_PORT_RANGE_83` — диапазоны портов для PHP 8.3
+- `APP_PORT_RANGE_74`/`VITE_PORT_RANGE_74` — диапазоны портов для PHP 7.4
+- `APP_PORT_83`/`VITE_PORT_83`/`APP_PORT_74`/`VITE_PORT_74` — фиксированные порты внутри соответствующих диапазонов (опционально)
 - `XDEBUG_MODE` — режим Xdebug (`debug`, `off`, …)
 
 Все значения имеют дефолты; можно не создавать `.env`, но рекомендуется скопировать `.env.example` и при необходимости подредактировать.
@@ -82,17 +85,17 @@
 Можно управлять логином/паролем и базой через переменные `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE` в devbox/.env.
 
 ## Повседневные команды (`bin/*`)
-- `workon <project>`: интерактивная оболочка в `/var/www/<project>` контейнера workspace
-- `dev <project>`: запустить сразу `artisan serve` и `vite` на свободных портах, показать ссылки
-- `serve <project> [port]`: только Laravel (`php artisan serve --host=0.0.0.0 --port=<port>`)
-- `vite <project> [port]`: только Vite (`npm run dev -- --host --strictPort --port <port>`)
-- `stop <project>`: остановить процессы `serve` и `vite` проекта, очистить логи
-- `ps <project>`: показать процессы `serve`/`vite` внутри workspace для проекта
-- `logs <project> [all|serve|vite]`: вывести хвосты логов `/tmp/*-<project>-*.log`
-- `composer <project> …`: выполнить `composer …` в папке проекта
-- `npm <project> …`: выполнить `npm …` в папке проекта
-- `use-php <8.2-cli|8.3-cli|…>`: сменить версию PHP (пересоберёт workspace)
-- `use-node <18|20|22>`: сменить мажорную версию Node (пересоберёт workspace)
+- `workon <project> [83|74]`: интерактивная оболочка в `/var/www/<project>` выбранного workspace; второй параметр разово выбирает `workspace83` или `workspace74`
+- `dev <project> [83|74]`: запустить сразу `artisan serve` и `vite` на свободных портах
+- `serve <project> [83|74] [port]`: только Laravel (`php artisan serve --host=0.0.0.0 --port=<port>`)
+- `vite <project> [83|74] [port]`: только Vite (`npm run dev -- --host --strictPort --port <port>`)
+- `stop <project> [83|74]`: остановить процессы `serve` и `vite` проекта, очистить логи
+- `ps <project> [83|74]`: показать процессы `serve`/`vite` внутри выбранного workspace
+- `logs <project> [83|74] [all|serve|vite]`: вывести хвосты логов проекта
+- `composer <project> [83|74] …`: выполнить `composer …` в папке проекта
+- `npm <project> [83|74] …`: выполнить `npm …` в папке проекта
+- `use-php <83|74>`: выбрать workspace по умолчанию для скриптов (разово можно `DEVBOX_PHP=74 <cmd> …`)
+- `use-node <18|20|22>`: сменить мажорную версию Node для текущего выбранного workspace
 
 Под капотом все команды используют `docker compose exec` с рабочей директорией проекта и UID/GID текущего пользователя, чтобы не ломать права на файлах.
 
@@ -101,7 +104,7 @@
 - Клиент: `host.docker.internal:9003` (добавлен `extra_hosts` для Linux)
 - Для IDE (PhpStorm/VSC): настройте путь‑маппинг проекта на `/var/www/<project>`; `PHP_IDE_CONFIG=serverName=php-devbox`
 
-Чтобы временно отключить Xdebug: установите `XDEBUG_MODE=off` в devbox/.env и перезапустите workspace (`docker compose up -d workspace`).
+Чтобы временно отключить Xdebug: установите `XDEBUG_MODE=off` в devbox/.env и перезапустите workspace (`docker compose up -d workspace83` или `workspace74`).
 
 ## Типичные сценарии
 — Новый проект Laravel в папке `../my-api`:
@@ -120,16 +123,16 @@
 5. `dev existing-app`
 
 ## Обслуживание и управление
-- Построить/обновить workspace: `docker compose build workspace`
+- Построить/обновить workspace: `docker compose build workspace83` (или `workspace74`)
 - Перезапустить сервисы: `docker compose up -d`
 - Остановить всё: `docker compose down` (данные БД сохранятся в `mysql_data`)
 
 ## Тонкости и советы
-- Порты: если в диапазоне не осталось свободных, команды сообщат об ошибке — расширьте `APP_PORT_RANGE`/`VITE_PORT_RANGE` в devbox/.env
-- Порты: Docker может «занимать» опубликованные порты через `docker-proxy`. Скрипты учитывают это и считают такие порты пригодными. Если реально порт занят сторонним процессом — измените диапазон `APP_PORT_RANGE`/`VITE_PORT_RANGE` или освободите порт.
+- Порты: если в диапазоне не осталось свободных, команды сообщат об ошибке — расширьте соответствующие `APP_PORT_RANGE_83/74` и `VITE_PORT_RANGE_83/74` в devbox/.env
+- Порты: Docker может «занимать» опубликованные порты через `docker-proxy`. Скрипты учитывают это и считают такие порты пригодными. Если реально порт занят сторонним процессом — измените соответствующий диапазон `APP_PORT_RANGE_83/74` или `VITE_PORT_RANGE_83/74` или освободите порт.
  - Порты: если `ss -p`/`lsof` не показывают имена процессов без sudo и кажется, что порты заняты, но devbox уже поднят — скрипты всё равно выберут порт из опубликованного диапазона, т.к. его слушает `docker-proxy` и он пригоден для проксирования в контейнер.
 - Права на файлы: контейнер запускается под вашим UID/GID (`user: "${UID:-1000}:${GID:-1000}"`), чтобы избежать `root`‑файлов
- - Права npm‑кэша: если видите `npm ERR! EACCES` про `/home/dev/.npm`, скрипты `npm`/`vite` автоматически чинят права (`chown` кэш‑тома). При крайней необходимости можно вручную: `docker compose exec -u 0 workspace chown -R 1000:1000 /home/dev/.npm`
+ - Права npm‑кэша: если видите `npm ERR! EACCES` про `/home/dev/.npm`, скрипты `npm`/`vite` автоматически чинят права (`chown` кэш‑тома). При крайней необходимости можно вручную: `docker compose exec -u 0 workspace83 chown -R 1000:1000 /home/dev/.npm` (или `workspace74`)
 - Несколько проектов: devbox поддерживает параллельный запуск, у каждого — свой порт из диапазона
 - Бэкенд без Vite: используйте только `serve`, либо запускайте свой сервер самостоятельно в `workon`
 
@@ -138,7 +141,7 @@
 - Порты заняты: расширьте диапазоны или укажите порт вручную: `serve app 8010`, `vite app 5178`
 - Нет доступа к БД: проверьте `.env` проекта (`DB_HOST=mysql`, порт 3306) и что `db-ensure` создавал пользователя/права
 - Xdebug не подключается: проверьте, что IDE слушает 9003, а `host.docker.internal` доступен; на Linux это настроено через `extra_hosts`
-- Node/PHP версия: используйте `use-node`/`use-php`, затем перезапустите workspace
+- Node/PHP версия: используйте `use-node`/`use-php`, затем перезапустите соответствующий workspace
 - Laravel не открывается на `artisan serve`:
   - Проверьте путь проекта: `bin/workon <project>` должен открыть оболочку в `/var/www/<project>`.
   - Убедитесь, что есть `artisan` в корне проекта и установлены зависимости: `composer install`, затем `php artisan key:generate`.

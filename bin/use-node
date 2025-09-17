@@ -4,7 +4,9 @@ source "$(dirname "$0")/_lib.sh"; load_env
 major="${1:-}"; [[ -z "$major" ]] && { echo "usage: use-node <18|20|22>"; exit 1; }
 envf="$DEVBOX_DIR/.env"; touch "$envf"
 grep -q "^NODE_MAJOR=" "$envf" && sed -i.bak "s/^NODE_MAJOR=.*/NODE_MAJOR=$major/" "$envf" || echo "NODE_MAJOR=$major" >> "$envf"
-echo "🔄 Rebuild workspace with Node $major…"
-docker compose -f "$DEVBOX_DIR/docker-compose.yml" build workspace
-docker compose -f "$DEVBOX_DIR/docker-compose.yml" up -d workspace
-docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec workspace node -v
+
+# Пересобираем текущий выбранный workspace (можно переопределить DEVBOX_PHP=74 ...)
+echo "🔄 Rebuild ${WS_SERVICE} with Node $major…"
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" build "${WS_SERVICE}"
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" up -d "${WS_SERVICE}"
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec "${WS_SERVICE}" node -v

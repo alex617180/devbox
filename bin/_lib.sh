@@ -2,12 +2,33 @@
 set -euo pipefail
 
 DEVBOX_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+WS_SERVICE=""  # workspace83|workspace74 (определяется в load_env)
 
 load_env() {
   local f="$DEVBOX_DIR/.env"
   [[ -f "$f" ]] && { set -a; source "$f"; set +a; }
-  APP_PORT_RANGE="${APP_PORT_RANGE:-8000-8015}"
-  VITE_PORT_RANGE="${VITE_PORT_RANGE:-5173-5199}"
+
+  # Выбор workspace по приоритету: DEVBOX_PHP env → DEFAULT_PHP из .env → 83
+  local php_sel="${DEVBOX_PHP:-${DEFAULT_PHP:-83}}"
+  case "$php_sel" in
+    83|8.3|8.3-cli) WS_SERVICE="workspace83" ;;
+    74|7.4|7.4-cli) WS_SERVICE="workspace74" ;;
+    *) WS_SERVICE="workspace83" ;;
+  esac
+
+  # Подставим workspace-специфичные порты/диапазоны в общие переменные,
+  # чтобы существующие скрипты могли их использовать без изменений.
+  if [[ "$WS_SERVICE" == "workspace83" ]]; then
+    APP_PORT="${APP_PORT_83:-${APP_PORT:-}}"
+    VITE_PORT="${VITE_PORT_83:-${VITE_PORT:-}}"
+    APP_PORT_RANGE="${APP_PORT_RANGE_83:-${APP_PORT_RANGE:-28080-28120}}"
+    VITE_PORT_RANGE="${VITE_PORT_RANGE_83:-${VITE_PORT_RANGE:-28130-28180}}"
+  else
+    APP_PORT="${APP_PORT_74:-${APP_PORT:-}}"
+    VITE_PORT="${VITE_PORT_74:-${VITE_PORT:-}}"
+    APP_PORT_RANGE="${APP_PORT_RANGE_74:-${APP_PORT_RANGE:-28200-28240}}"
+    VITE_PORT_RANGE="${VITE_PORT_RANGE_74:-${VITE_PORT_RANGE:-28250-28290}}"
+  fi
 }
 
 ensure_up() {
@@ -16,8 +37,9 @@ ensure_up() {
     echo "❌ Сначала подними devbox: (cd $DEVBOX_DIR && docker compose up -d --build)"; exit 1;
   fi
   # Проверяем, что workspace доступен (контейнер присутствует и не остановлен)
-  if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" ps -q workspace | grep -q .; then
-    echo "❌ Workspace не запущен. Выполни: (cd $DEVBOX_DIR && docker compose up -d --build)"; exit 1;
+  local ws="${WS_SERVICE:-workspace83}"
+  if ! docker compose -f "$DEVBOX_DIR/docker-compose.yml" ps -q "$ws" | grep -q .; then
+    echo "❌ ${ws} не запущен. Выполни: (cd $DEVBOX_DIR && docker compose up -d --build)"; exit 1;
   fi
 }
 
@@ -28,8 +50,9 @@ freeport() {
   command -v lsof >/dev/null && has_lsof=1
   # Определяем, запущен ли workspace (значит, диапазоны портов уже опубликованы Docker)
   local workspace_up=0
-  if docker compose -f "$DEVBOX_DIR/docker-compose.yml" ps -q workspace >/dev/null 2>&1; then
-    if [[ -n "$(docker compose -f "$DEVBOX_DIR/docker-compose.yml" ps -q workspace 2>/dev/null)" ]]; then
+  local ws="${WS_SERVICE:-workspace83}"
+  if docker compose -f "$DEVBOX_DIR/docker-compose.yml" ps -q "$ws" >/dev/null 2>&1; then
+    if [[ -n "$(docker compose -f "$DEVBOX_DIR/docker-compose.yml" ps -q "$ws" 2>/dev/null)" ]]; then
       workspace_up=1
     fi
   fi
@@ -78,5 +101,5 @@ freeport() {
   return 1
 }
 
-dex()  { local wd="$1"; shift; docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec  -w "$wd" workspace "$@"; }
-dexd() { local wd="$1"; shift; docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -d -w "$wd" workspace "$@"; }
+dex()  { local wd="$1"; shift; local ws="${WS_SERVICE:-workspace83}"; docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec  -w "$wd" "$ws" "$@"; }
+dexd() { local wd="$1"; shift; local ws="${WS_SERVICE:-workspace83}"; docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -d -w "$wd" "$ws" "$@"; }

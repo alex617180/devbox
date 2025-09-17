@@ -1,5 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
-source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
-proj="${1:-}"; [[ -z "$proj" ]] && { echo "usage: workon <relative-project-path>"; exit 1; }
+source "$(dirname "$0")/_lib.sh"
+
+proj="${1:-}"
+php_sel_raw="${2:-}"
+
+if [[ -z "$proj" ]]; then
+  echo "usage: workon <relative-project-path> [83|74]"
+  exit 1
+fi
+
+# Разовый выбор workspace через второй аргумент
+if [[ -n "$php_sel_raw" ]]; then
+  case "$php_sel_raw" in
+    83|8.3|8.3-cli|workspace83)
+      export DEVBOX_PHP=83 ;;
+    74|7.4|7.4-cli|workspace74)
+      export DEVBOX_PHP=74 ;;
+    *)
+      echo "❌ неизвестный вариант: $php_sel_raw (ожидается 83 или 74)"; exit 1;;
+  esac
+fi
+
+load_env; ensure_up
 dex "/var/www/$proj" bash

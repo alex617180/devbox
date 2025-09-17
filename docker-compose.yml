@@ -20,42 +20,67 @@ services:
       retries: 10
     restart: unless-stopped
 
-  workspace:
+  # PHP 8.3 workspace
+  workspace83:
     build:
       context: ./workspace
       args:
-        PHP_TAG: "${PHP_TAG:-8.3-cli}"
+        PHP_TAG: "${PHP83_TAG:-8.3-cli}"
         NODE_MAJOR: "${NODE_MAJOR:-20}"
     working_dir: /var/www
     volumes:
-      # Монтируем ВЕСЬ каталог с проектами (по умолчанию — родительская папка)
       - ${HOST_PROJECTS_DIR:-../}:/var/www
       - composer_cache:/tmp/composer
       - node_cache:/home/dev/.npm
-      # Логи процессов (доступны на хосте в ./logs)
       - ./logs:/var/log/devbox
     environment:
-      # Удобные дефолты в контейнере (проекты в своих .env ставят DB_HOST=mysql, DB_PORT=3306)
       DB_HOST: mysql
       DB_PORT: 3306
-
-      # Xdebug
       XDEBUG_MODE: ${XDEBUG_MODE:-debug}
       XDEBUG_CONFIG: client_host=host.docker.internal client_port=9003
-      PHP_IDE_CONFIG: serverName=php-devbox
+      PHP_IDE_CONFIG: serverName=php-devbox-83
     extra_hosts:
-      # Чтобы host.docker.internal работал на Linux
       - "host.docker.internal:host-gateway"
     depends_on:
       mysql:
         condition: service_healthy
-    # Контейнер «живёт», а процессы (artisan/vite) ты запускаешь из нужной папки
     command: bash -lc 'php -v && node -v && npm -v; tail -f /dev/null'
     user: "${UID:-1000}:${GID:-1000}"
     ports:
-      # Фиксированные порты из .env (при отсутствии — дефолты)
-      - "${APP_PORT:-8000}:${APP_PORT:-8000}"
-      - "${VITE_PORT:-5173}:${VITE_PORT:-5173}"
+      # Публикуем диапазоны портов, чтобы скрипты могли гибко выбирать
+      - "${APP_PORT_RANGE_83:-28080-28120}:${APP_PORT_RANGE_83:-28080-28120}"
+      - "${VITE_PORT_RANGE_83:-28130-28180}:${VITE_PORT_RANGE_83:-28130-28180}"
+    restart: unless-stopped
+
+  # PHP 7.4 workspace
+  workspace74:
+    build:
+      context: ./workspace
+      args:
+        PHP_TAG: "${PHP74_TAG:-7.4-cli}"
+        NODE_MAJOR: "${NODE_MAJOR:-20}"
+    working_dir: /var/www
+    volumes:
+      - ${HOST_PROJECTS_DIR:-../}:/var/www
+      - composer_cache:/tmp/composer
+      - node_cache:/home/dev/.npm
+      - ./logs:/var/log/devbox
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      XDEBUG_MODE: ${XDEBUG_MODE:-debug}
+      XDEBUG_CONFIG: client_host=host.docker.internal client_port=9003
+      PHP_IDE_CONFIG: serverName=php-devbox-74
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: bash -lc 'php -v && node -v && npm -v; tail -f /dev/null'
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "${APP_PORT_RANGE_74:-28200-28240}:${APP_PORT_RANGE_74:-28200-28240}"
+      - "${VITE_PORT_RANGE_74:-28250-28290}:${VITE_PORT_RANGE_74:-28250-28290}"
     restart: unless-stopped
 
 volumes:

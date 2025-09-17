@@ -1,18 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
-source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
-proj="${1:-}"; port="${2:-}"
-[[ -z "$proj" ]] && { echo "usage: vite <project> [port-from-${VITE_PORT_RANGE}]"; exit 1; }
+source "$(dirname "$0")/_lib.sh"
+proj="${1:-}"
+arg2="${2:-}"
+arg3="${3:-}"
+if [[ -z "$proj" ]]; then echo "usage: vite <project> [83|74] [port-from-range]"; exit 1; fi
+
+# Разовый выбор workspace (второй аргумент), иначе трактуем как порт
+port=""
+case "$arg2" in
+  83|8.3|8.3-cli|workspace83) export DEVBOX_PHP=83; port="$arg3" ;;
+  74|7.4|7.4-cli|workspace74) export DEVBOX_PHP=74; port="$arg3" ;;
+  "") ;;
+  *) port="$arg2" ;;
+esac
+
+load_env; ensure_up
 # если порт не передан — пробуем фиксированный VITE_PORT, затем диапазон
 [[ -z "$port" ]] && port="${VITE_PORT:-}" || true
 [[ -z "$port" ]] && port="$(freeport "$VITE_PORT_RANGE")" || true
 [[ -z "$port" ]] && { echo "❌ Нет свободных портов в $VITE_PORT_RANGE и VITE_PORT не задан"; exit 1; }
 
 # гарантируем доступность каталога логов внутри контейнера
-docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T -u 0 workspace bash -lc 'mkdir -p /var/log/devbox && chmod 0777 /var/log/devbox'
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T -u 0 "${WS_SERVICE}" bash -lc 'mkdir -p /var/log/devbox && chmod 0777 /var/log/devbox'
 
 # починим права на npm-кэш, если нужно
-docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T -u 0 workspace bash -lc '
+docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec -T -u 0 "${WS_SERVICE}" bash -lc '
   wd="/var/www/'"$proj"'";
   uid=$(stat -c %u "$wd" 2>/dev/null || echo 1000)
   gid=$(stat -c %g "$wd" 2>/dev/null || echo 1000)

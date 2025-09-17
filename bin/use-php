@@ -1,10 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"; load_env
-ver="${1:-}"; [[ -z "$ver" ]] && { echo "usage: use-php <8.2-cli|8.3-cli|...>"; exit 1; }
+
+# Новый смысл: выбираем workspace по умолчанию для скриптов (83 или 74).
+# Примеры:
+#   use-php 83   — скрипты будут выполнять команды в workspace83
+#   use-php 74   — скрипты будут выполнять команды в workspace74
+
+sel="${1:-}"; [[ -z "$sel" ]] && { echo "usage: use-php <83|74>"; exit 1; }
+case "$sel" in
+  83|8.3|8.3-cli) sel=83 ;;
+  74|7.4|7.4-cli) sel=74 ;;
+  *) echo "❌ unsupported: $sel (expected 83 or 74)"; exit 1;;
+esac
+
 envf="$DEVBOX_DIR/.env"; touch "$envf"
-grep -q "^PHP_TAG=" "$envf" && sed -i.bak "s/^PHP_TAG=.*/PHP_TAG=$ver/" "$envf" || echo "PHP_TAG=$ver" >> "$envf"
-echo "🔄 Rebuild workspace with PHP $ver…"
-docker compose -f "$DEVBOX_DIR/docker-compose.yml" build workspace
-docker compose -f "$DEVBOX_DIR/docker-compose.yml" up -d workspace
-docker compose -f "$DEVBOX_DIR/docker-compose.yml" exec workspace php -v
+if grep -q "^DEFAULT_PHP=" "$envf"; then
+  sed -i.bak "s/^DEFAULT_PHP=.*/DEFAULT_PHP=$sel/" "$envf"
+else
+  echo "DEFAULT_PHP=$sel" >> "$envf"
+fi
+echo "✅ Default workspace set: PHP $sel (use DEVBOX_PHP=74 per-invocation override)"

@@ -1,8 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
-source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
-proj="${1:-}"; kind="${2:-all}"   # all|serve|vite
-[[ -z "$proj" ]] && { echo "usage: logs <project> [all|serve|vite]"; exit 1; }
+source "$(dirname "$0")/_lib.sh"
+proj="${1:-}"; a2="${2:-}"; a3="${3:-}"
+if [[ -z "$proj" ]]; then echo "usage: logs <project> [83|74] [all|serve|vite]"; exit 1; fi
+
+# Разовый выбор workspace и вид логов
+kind="all"
+if [[ -n "$a2" ]]; then
+  case "$a2" in
+    83|8.3|8.3-cli|workspace83) export DEVBOX_PHP=83 ;;
+    74|7.4|7.4-cli|workspace74) export DEVBOX_PHP=74 ;;
+    all|serve|vite) kind="$a2" ;;
+  esac
+fi
+if [[ -n "$a3" ]]; then
+  case "$a3" in
+    83|8.3|8.3-cli|workspace83) export DEVBOX_PHP=83 ;;
+    74|7.4|7.4-cli|workspace74) export DEVBOX_PHP=74 ;;
+    all|serve|vite) kind="$a3" ;;
+  esac
+fi
+
+load_env; ensure_up
 
 case "$kind" in
   all)

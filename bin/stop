@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
-source "$(dirname "$0")/_lib.sh"; load_env; ensure_up
-proj="${1:-}"; [[ -z "$proj" ]] && { echo "usage: stop <project>"; exit 1; }
+source "$(dirname "$0")/_lib.sh"
+proj="${1:-}"; ver="${2:-}"
+if [[ -z "$proj" ]]; then echo "usage: stop <project> [83|74]"; exit 1; fi
+
+if [[ -n "$ver" ]]; then
+  case "$ver" in
+    83|8.3|8.3-cli|workspace83) export DEVBOX_PHP=83 ;;
+    74|7.4|7.4-cli|workspace74) export DEVBOX_PHP=74 ;;
+  esac
+fi
+
+load_env; ensure_up
 
 dex "/var/www/$proj" bash -lc '
   # artisan serve — убиваем только процессы из текущей директории проекта
