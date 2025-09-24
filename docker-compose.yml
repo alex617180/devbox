@@ -26,7 +26,7 @@ services:
       context: ./workspace
       args:
         PHP_TAG: "${PHP83_TAG:-8.3-cli}"
-        NODE_MAJOR: "${NODE_MAJOR:-20}"
+        NODE_MAJOR: "${NODE_MAJOR:-22}"
     working_dir: /var/www
     volumes:
       - ${HOST_PROJECTS_DIR:-../}:/var/www
@@ -58,7 +58,7 @@ services:
       context: ./workspace
       args:
         PHP_TAG: "${PHP74_TAG:-7.4-cli}"
-        NODE_MAJOR: "${NODE_MAJOR:-20}"
+        NODE_MAJOR: "${NODE_MAJOR:-22}"
     working_dir: /var/www
     volumes:
       - ${HOST_PROJECTS_DIR:-../}:/var/www

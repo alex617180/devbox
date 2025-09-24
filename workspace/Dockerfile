@@ -2,7 +2,7 @@
 ARG PHP_TAG=8.3-cli
 FROM php:${PHP_TAG}
 
-ARG NODE_MAJOR=20
+ARG NODE_MAJOR=22
 
 # Базовые пакеты + PHP-расширения (+Xdebug)
 RUN apt-get update && apt-get install -y \

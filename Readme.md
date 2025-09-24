@@ -36,8 +36,8 @@
 Ссылки будут в выводе: `http://localhost:<порт>`.
 
 ## Состав окружения
-- workspace83: PHP `${PHP83_TAG:-8.3-cli}`, Node `${NODE_MAJOR:-20}`, Composer, Xdebug; рабочая директория `/var/www`
-- workspace74: PHP `${PHP74_TAG:-7.4-cli}`, Node `${NODE_MAJOR:-20}`, Composer, Xdebug; рабочая директория `/var/www`
+- workspace83: PHP `${PHP83_TAG:-8.3-cli}`, Node `${NODE_MAJOR:-22}`, Composer, Xdebug; рабочая директория `/var/www`
+- workspace74: PHP `${PHP74_TAG:-7.4-cli}`, Node `${NODE_MAJOR:-22}`, Composer, Xdebug; рабочая директория `/var/www`
 - mysql: образ `mysql:8.4`, проброшен порт `${MYSQL_PORT:-3306}`
 - volumes: `mysql_data`, `composer_cache`, `node_cache`
 - порты публикуются диапазонами, отдельно для каждого workspace:
